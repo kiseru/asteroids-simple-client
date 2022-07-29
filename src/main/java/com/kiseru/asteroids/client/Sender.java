@@ -1,10 +1,13 @@
+package com.kiseru.asteroids.client;
+
+
 import java.io.PrintWriter;
 import java.util.Scanner;
 
-public class Writer implements Runnable {
+public class Sender implements Runnable {
     private PrintWriter writer;
 
-    public Writer(PrintWriter writer) {
+    public Sender(PrintWriter writer) {
         this.writer = writer;
     }
 

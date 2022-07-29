@@ -1,10 +1,12 @@
+package com.kiseru.asteroids.client;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 
-public class Reader implements Runnable {
+public class Receiver implements Runnable {
     private BufferedReader reader;
 
-    public Reader(BufferedReader reader) {
+    public Receiver(BufferedReader reader) {
         this.reader = reader;
     }
 
@@ -15,8 +17,7 @@ public class Reader implements Runnable {
                 String inputData = reader.readLine();
                 System.out.println(inputData);
             } catch (IOException e) {
-                e.printStackTrace();
-                System.exit(1);
+                throw new RuntimeException(e);
             }
         }
     }
