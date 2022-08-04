@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
+import org.slf4j.LoggerFactory
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -15,16 +16,16 @@ private const val HOST = "localhost"
 
 private const val PORT = 6501
 
+private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
+
 fun main() = runBlocking<Unit> {
     val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
-
     launch() { startReceiver(socket) }
-
     launch() { startSender(socket) }
 }
 
 private suspend fun startReceiver(socket: Socket) {
-    println("Receiver started")
+    log.info("Receiver started")
     val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
     BufferedReader(InputStreamReader(inputStream)).use { reader ->
         while (true) {
@@ -39,7 +40,7 @@ private suspend fun startReceiver(socket: Socket) {
 }
 
 private suspend fun startSender(socket: Socket) {
-    println("Sender started")
+    log.info("Sender started")
     val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
     val writer = PrintWriter(outputStream, true)
     val scanner = Scanner(System.`in`)
@@ -52,5 +53,9 @@ private suspend fun startSender(socket: Socket) {
         writer.println(text)
     }
 
-    withContext(Dispatchers.IO) { socket.close() }
+    withContext(Dispatchers.IO) {
+        log.info("Closing connection")
+        socket.close()
+        log.info("Connection has been closed")
+    }
 }
