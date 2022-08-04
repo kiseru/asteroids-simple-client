@@ -3,6 +3,7 @@ package com.kiseru.asteroids.client
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import java.io.BufferedReader
 import java.io.IOException
 import java.io.InputStreamReader
@@ -14,23 +15,21 @@ private const val HOST = "localhost"
 
 private const val PORT = 6501
 
-fun main() = runBlocking<Unit>(Dispatchers.IO) {
-    val socket = Socket(HOST, PORT)
+fun main() = runBlocking<Unit> {
+    val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
 
-    launch(Dispatchers.IO) {
-        startReceiver(socket)
-    }
+    launch() { startReceiver(socket) }
 
-    launch(Dispatchers.IO) {
-        startSender(socket)
-    }
+    launch() { startSender(socket) }
 }
 
-private fun startReceiver(socket: Socket) {
-    BufferedReader(InputStreamReader(socket.getInputStream())).use { reader ->
+private suspend fun startReceiver(socket: Socket) {
+    println("Receiver started")
+    val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
+    BufferedReader(InputStreamReader(inputStream)).use { reader ->
         while (true) {
             try {
-                val inputData: String = reader.readLine()
+                val inputData: String = withContext(Dispatchers.IO) { reader.readLine() }
                 println(inputData)
             } catch (e: IOException) {
                 break
@@ -39,11 +38,13 @@ private fun startReceiver(socket: Socket) {
     }
 }
 
-private fun startSender(socket: Socket) {
-    val writer = PrintWriter(socket.getOutputStream(), true)
+private suspend fun startSender(socket: Socket) {
+    println("Sender started")
+    val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
+    val writer = PrintWriter(outputStream, true)
     val scanner = Scanner(System.`in`)
     while (true) {
-        val text = scanner.nextLine()
+        val text = withContext(Dispatchers.IO) { scanner.nextLine() }
         if ("exit" == text) {
             break
         }
@@ -51,5 +52,5 @@ private fun startSender(socket: Socket) {
         writer.println(text)
     }
 
-    socket.close()
+    withContext(Dispatchers.IO) { socket.close() }
 }
