@@ -12,6 +12,8 @@ import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
+private const val EXIT_COMMAND = "exit"
+
 private const val HOST = "localhost"
 
 private const val PORT = 6501
@@ -31,6 +33,10 @@ private suspend fun startReceiver(socket: Socket) {
         while (true) {
             try {
                 val inputData: String = withContext(Dispatchers.IO) { reader.readLine() }
+                if (inputData == EXIT_COMMAND) {
+                    break
+                }
+
                 println(inputData)
             } catch (e: IOException) {
                 break
@@ -42,20 +48,14 @@ private suspend fun startReceiver(socket: Socket) {
 private suspend fun startSender(socket: Socket) {
     log.info("Sender started")
     val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
-    val writer = PrintWriter(outputStream, true)
-    val scanner = Scanner(System.`in`)
-    while (true) {
-        val text = withContext(Dispatchers.IO) { scanner.nextLine() }
-        if ("exit" == text) {
-            break
+    PrintWriter(outputStream, true).use { writer ->
+        val scanner = Scanner(System.`in`)
+        while (true) {
+            val text = withContext(Dispatchers.IO) { scanner.nextLine() }
+            writer.println(text)
+            if (text == EXIT_COMMAND) {
+                break
+            }
         }
-
-        writer.println(text)
-    }
-
-    withContext(Dispatchers.IO) {
-        log.info("Closing connection")
-        socket.close()
-        log.info("Connection has been closed")
     }
 }
