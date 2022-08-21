@@ -32,16 +32,18 @@ fun main() = runBlocking<Unit> {
 suspend fun startReceiver(inputStream: InputStream) {
     log.info("Receiver started")
     val messageReceiver = createReceiver(inputStream)
-    while (true) {
-        try {
-            val inputData = messageReceiver.receive() ?: break
-            if (inputData == EXIT_COMMAND) {
+    messageReceiver.use {
+        while (true) {
+            try {
+                val inputData = messageReceiver.receive() ?: break
+                if (inputData == EXIT_COMMAND) {
+                    break
+                }
+
+                println(inputData)
+            } catch (e: IOException) {
                 break
             }
-
-            println(inputData)
-        } catch (e: IOException) {
-            break
         }
     }
 }
@@ -49,12 +51,14 @@ suspend fun startReceiver(inputStream: InputStream) {
 suspend fun startSender(outputStream: OutputStream) {
     log.info("Sender started")
     val messageSender = createSender(outputStream)
-    val scanner = Scanner(System.`in`)
-    while (true) {
-        val text = withContext(Dispatchers.IO) { scanner.nextLine() }
-        messageSender.send(text)
-        if (text == EXIT_COMMAND) {
-            break
+    messageSender.use {
+        val scanner = Scanner(System.`in`)
+        while (true) {
+            val text = withContext(Dispatchers.IO) { scanner.nextLine() }
+            messageSender.send(text)
+            if (text == EXIT_COMMAND) {
+                break
+            }
         }
     }
 }
@@ -63,12 +67,12 @@ fun createReceiver(inputStream: InputStream): MessageReceiver = MessageReceiverI
 
 fun createSender(outputStream: OutputStream): MessageSender = MessageSenderImpl(outputStream)
 
-interface MessageReceiver {
+interface MessageReceiver : AutoCloseable {
 
     suspend fun receive(): String?
 }
 
-interface MessageSender {
+interface MessageSender : AutoCloseable {
 
     fun send(msg: String)
 }
@@ -82,6 +86,10 @@ class MessageReceiverImpl(
     override suspend fun receive(): String? = withContext(Dispatchers.IO) {
         reader.readLine()
     }
+
+    override fun close() {
+        reader.close()
+    }
 }
 
 class MessageSenderImpl(
@@ -93,5 +101,9 @@ class MessageSenderImpl(
     override fun send(msg: String) {
         writer.println(msg)
         writer.flush()
+    }
+
+    override fun close() {
+        writer.close()
     }
 }
