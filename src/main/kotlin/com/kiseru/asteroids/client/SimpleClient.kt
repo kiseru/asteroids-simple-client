@@ -5,10 +5,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import java.io.BufferedReader
-import java.io.IOException
-import java.io.InputStreamReader
-import java.io.PrintWriter
+import java.io.*
 import java.net.Socket
 import java.util.*
 
@@ -22,17 +19,17 @@ private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
 fun main() = runBlocking<Unit> {
     val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
-    launch() { startReceiver(socket) }
+    val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
+    launch() { startReceiver(inputStream) }
     launch() { startSender(socket) }
 }
 
-private suspend fun startReceiver(socket: Socket) {
+private suspend fun startReceiver(inputStream: InputStream) {
     log.info("Receiver started")
-    val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
     BufferedReader(InputStreamReader(inputStream)).use { reader ->
         while (true) {
             try {
-                val inputData: String = withContext(Dispatchers.IO) { reader.readLine() }
+                val inputData = withContext(Dispatchers.IO) { reader.readLine() }
                 if (inputData == EXIT_COMMAND) {
                     break
                 }
