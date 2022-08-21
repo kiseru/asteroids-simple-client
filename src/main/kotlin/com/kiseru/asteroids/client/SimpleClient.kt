@@ -19,7 +19,7 @@ private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
 fun main() = runBlocking<Unit> {
     val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
-    launch() {
+    launch {
         val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
         val receiver = createReceiver(inputStream)
         startReceiver(receiver)
