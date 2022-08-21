@@ -48,23 +48,29 @@ suspend fun startReceiver(inputStream: InputStream) {
 
 suspend fun startSender(outputStream: OutputStream) {
     log.info("Sender started")
-    PrintWriter(outputStream, true).use { writer ->
-        val scanner = Scanner(System.`in`)
-        while (true) {
-            val text = withContext(Dispatchers.IO) { scanner.nextLine() }
-            writer.println(text)
-            if (text == EXIT_COMMAND) {
-                break
-            }
+    val messageSender = createSender(outputStream)
+    val scanner = Scanner(System.`in`)
+    while (true) {
+        val text = withContext(Dispatchers.IO) { scanner.nextLine() }
+        messageSender.send(text)
+        if (text == EXIT_COMMAND) {
+            break
         }
     }
 }
 
 fun createReceiver(inputStream: InputStream): MessageReceiver = MessageReceiverImpl(inputStream)
 
+fun createSender(outputStream: OutputStream): MessageSender = MessageSenderImpl(outputStream)
+
 interface MessageReceiver {
 
     suspend fun receive(): String?
+}
+
+interface MessageSender {
+
+    fun send(msg: String)
 }
 
 class MessageReceiverImpl(
@@ -75,5 +81,17 @@ class MessageReceiverImpl(
 
     override suspend fun receive(): String? = withContext(Dispatchers.IO) {
         reader.readLine()
+    }
+}
+
+class MessageSenderImpl(
+    outputStream: OutputStream,
+) : MessageSender {
+
+    private val writer = PrintWriter(outputStream)
+
+    override fun send(msg: String) {
+        writer.println(msg)
+        writer.flush()
     }
 }
