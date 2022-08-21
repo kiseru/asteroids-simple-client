@@ -19,9 +19,14 @@ private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
 fun main() = runBlocking<Unit> {
     val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
-    val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
-    launch() { startReceiver(inputStream) }
-    launch() { startSender(socket) }
+    launch() {
+        val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
+        startReceiver(inputStream)
+    }
+    launch {
+        val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
+        startSender(outputStream)
+    }
 }
 
 private suspend fun startReceiver(inputStream: InputStream) {
@@ -42,9 +47,8 @@ private suspend fun startReceiver(inputStream: InputStream) {
     }
 }
 
-private suspend fun startSender(socket: Socket) {
+private suspend fun startSender(outputStream: OutputStream) {
     log.info("Sender started")
-    val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
     PrintWriter(outputStream, true).use { writer ->
         val scanner = Scanner(System.`in`)
         while (true) {
