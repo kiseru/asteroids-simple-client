@@ -29,25 +29,24 @@ fun main() = runBlocking<Unit> {
     }
 }
 
-private suspend fun startReceiver(inputStream: InputStream) {
+suspend fun startReceiver(inputStream: InputStream) {
     log.info("Receiver started")
-    BufferedReader(InputStreamReader(inputStream)).use { reader ->
-        while (true) {
-            try {
-                val inputData = withContext(Dispatchers.IO) { reader.readLine() }
-                if (inputData == EXIT_COMMAND) {
-                    break
-                }
-
-                println(inputData)
-            } catch (e: IOException) {
+    val messageReceiver = createReceiver(inputStream)
+    while (true) {
+        try {
+            val inputData = messageReceiver.receive() ?: break
+            if (inputData == EXIT_COMMAND) {
                 break
             }
+
+            println(inputData)
+        } catch (e: IOException) {
+            break
         }
     }
 }
 
-private suspend fun startSender(outputStream: OutputStream) {
+suspend fun startSender(outputStream: OutputStream) {
     log.info("Sender started")
     PrintWriter(outputStream, true).use { writer ->
         val scanner = Scanner(System.`in`)
@@ -58,5 +57,23 @@ private suspend fun startSender(outputStream: OutputStream) {
                 break
             }
         }
+    }
+}
+
+fun createReceiver(inputStream: InputStream): MessageReceiver = MessageReceiverImpl(inputStream)
+
+interface MessageReceiver {
+
+    suspend fun receive(): String?
+}
+
+class MessageReceiverImpl(
+    inputStream: InputStream,
+) : MessageReceiver {
+
+    private val reader = BufferedReader(InputStreamReader(inputStream))
+
+    override suspend fun receive(): String? = withContext(Dispatchers.IO) {
+        reader.readLine()
     }
 }
