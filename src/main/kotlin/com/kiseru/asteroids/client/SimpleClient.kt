@@ -1,11 +1,15 @@
 package com.kiseru.asteroids.client
 
+import com.kiseru.asteroids.client.impl.MessageReceiverImpl
+import com.kiseru.asteroids.client.impl.MessageSenderImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import java.io.*
+import java.io.IOException
+import java.io.InputStream
+import java.io.OutputStream
 import java.net.Socket
 import java.util.*
 
@@ -63,43 +67,3 @@ fun createReceiver(inputStream: InputStream): MessageReceiver = MessageReceiverI
 
 fun createSender(outputStream: OutputStream): MessageSender = MessageSenderImpl(outputStream)
 
-interface MessageReceiver : AutoCloseable {
-
-    suspend fun receive(): String?
-}
-
-interface MessageSender : AutoCloseable {
-
-    fun send(msg: String)
-}
-
-class MessageReceiverImpl(
-    inputStream: InputStream,
-) : MessageReceiver {
-
-    private val reader = BufferedReader(InputStreamReader(inputStream))
-
-    override suspend fun receive(): String? = withContext(Dispatchers.IO) {
-        reader.readLine()
-    }
-
-    override fun close() {
-        reader.close()
-    }
-}
-
-class MessageSenderImpl(
-    outputStream: OutputStream,
-) : MessageSender {
-
-    private val writer = PrintWriter(outputStream)
-
-    override fun send(msg: String) {
-        writer.println(msg)
-        writer.flush()
-    }
-
-    override fun close() {
-        writer.close()
-    }
-}
