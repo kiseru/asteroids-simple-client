@@ -4,10 +4,11 @@ import com.kiseru.asteroids.client.impl.MessageReceiverImpl
 import com.kiseru.asteroids.client.impl.MessageSenderImpl
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.takeWhile
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.Socket
@@ -37,18 +38,13 @@ suspend fun main(): Unit = coroutineScope {
 
 suspend fun startReceiver(messageReceiver: MessageReceiver) = messageReceiver.use {
     log.info("Receiver started")
-    while (true) {
-        try {
-            val inputData = messageReceiver.receive() ?: break
-            if (inputData == EXIT_COMMAND) {
-                break
-            }
-
-            println(inputData)
-        } catch (e: IOException) {
-            break
+    flow {
+        while (true) {
+            emit(messageReceiver.receive())
         }
     }
+        .takeWhile { it != null && it != EXIT_COMMAND }
+        .collect { println(it) }
 }
 
 suspend fun startSender(messageSender: MessageSender) = messageSender.use {
