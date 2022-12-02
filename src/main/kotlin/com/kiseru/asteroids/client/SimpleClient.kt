@@ -1,20 +1,19 @@
 package com.kiseru.asteroids.client
 
-import com.kiseru.asteroids.client.impl.MessageReceiverImpl
-import com.kiseru.asteroids.client.impl.MessageSenderImpl
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.takeWhile
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.*
 import org.slf4j.LoggerFactory
+import java.io.BufferedReader
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.OutputStream
+import java.io.PrintWriter
 import java.net.Socket
 import java.util.*
 
 private const val EXIT_COMMAND = "exit"
+
+private const val FINISH_COMMAND = "finish"
 
 private const val HOST = "localhost"
 
@@ -23,43 +22,56 @@ private const val PORT = 6501
 private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
 suspend fun main(): Unit = coroutineScope {
-    val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
+    val socket = createSocket(HOST, PORT)
     launch {
-        val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
-        val receiver = createReceiver(inputStream)
-        startReceiver(receiver)
+        val inputStream = socket.awaitInputStream()
+        val reader = BufferedReader(InputStreamReader(inputStream))
+        startReceiver(reader)
     }
     launch {
-        val outputStream = withContext(Dispatchers.IO) { socket.getOutputStream() }
-        val sender = createSender(outputStream)
-        startSender(sender)
+        val outputStream = socket.awaitOutputStream()
+        val writer = PrintWriter(outputStream, true)
+        startSender(writer)
     }
 }
 
-suspend fun startReceiver(messageReceiver: MessageReceiver) = messageReceiver.use {
-    log.info("Receiver started")
-    flow {
-        while (true) {
-            emit(messageReceiver.receive())
-        }
-    }
-        .takeWhile { it != null && it != EXIT_COMMAND }
+suspend fun startReceiver(reader: BufferedReader) = reader.use {
+    serverResponses(reader)
+        .onStart { log.info("Receiver started") }
+        .takeWhile { it != EXIT_COMMAND && it != FINISH_COMMAND }
         .collect { println(it) }
 }
 
-suspend fun startSender(messageSender: MessageSender) = messageSender.use {
-    log.info("Sender started")
-    val scanner = Scanner(System.`in`)
+suspend fun serverResponses(reader: BufferedReader): Flow<String> = flow {
     while (true) {
-        val text = withContext(Dispatchers.IO) { scanner.nextLine() }
-        messageSender.send(text)
-        if (text == EXIT_COMMAND) {
-            break
-        }
+        emit(reader.awaitReadLine())
     }
 }
 
-fun createReceiver(inputStream: InputStream): MessageReceiver = MessageReceiverImpl(inputStream)
+suspend fun startSender(writer: PrintWriter) = writer.use {
+    userInputFlow()
+        .onStart { log.info("Sender started") }
+        .takeWhile { it != EXIT_COMMAND }
+        .collect { writer.suspendedPrintln(it) }
+}
 
-fun createSender(outputStream: OutputStream): MessageSender = MessageSenderImpl(outputStream)
 
+suspend fun userInputFlow(): Flow<String> = flow {
+    val scanner = Scanner(System.`in`)
+    while (true) {
+        emit(scanner.awaitNextLine())
+    }
+}
+
+
+suspend fun createSocket(host: String, port: Int) = withContext(Dispatchers.IO) { Socket(host, port) }
+
+suspend fun Socket.awaitInputStream(): InputStream = withContext(Dispatchers.IO) { getInputStream() }
+
+suspend fun Socket.awaitOutputStream(): OutputStream = withContext(Dispatchers.IO) { getOutputStream() }
+
+suspend fun BufferedReader.awaitReadLine(): String = withContext(Dispatchers.IO) { readLine() }
+
+suspend fun PrintWriter.suspendedPrintln(x: String): Unit = withContext(Dispatchers.IO) { println(x) }
+
+suspend fun Scanner.awaitNextLine(): String = withContext(Dispatchers.IO) { nextLine() }
