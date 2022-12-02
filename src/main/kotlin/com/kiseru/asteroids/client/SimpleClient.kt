@@ -3,8 +3,8 @@ package com.kiseru.asteroids.client
 import com.kiseru.asteroids.client.impl.MessageReceiverImpl
 import com.kiseru.asteroids.client.impl.MessageSenderImpl
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
 import java.io.IOException
@@ -21,7 +21,7 @@ private const val PORT = 6501
 
 private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
-fun main() = runBlocking<Unit> {
+suspend fun main(): Unit = coroutineScope {
     val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
     launch {
         val inputStream = withContext(Dispatchers.IO) { socket.getInputStream() }
