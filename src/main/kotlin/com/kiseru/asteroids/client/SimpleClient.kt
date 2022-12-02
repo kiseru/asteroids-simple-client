@@ -51,7 +51,6 @@ suspend fun serverResponses(reader: BufferedReader): Flow<String> = flow {
 suspend fun startSender(writer: PrintWriter) = writer.use {
     userInputFlow()
         .onStart { log.info("Sender started") }
-        .takeWhile { it != EXIT_COMMAND }
         .collect { writer.suspendedPrintln(it) }
 }
 
