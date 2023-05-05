@@ -1,7 +1,10 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm") version "1.6.21"
+    id("org.springframework.boot") version "3.0.6"
+    id("io.spring.dependency-management") version "1.1.0"
+    kotlin("jvm") version "1.7.22"
+    kotlin("plugin.spring") version "1.7.22"
     application
 }
 
@@ -10,6 +13,8 @@ repositories {
 }
 
 dependencies {
+    implementation("org.springframework.boot:spring-boot-starter-json")
+    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation(kotlin("stdlib"))
     implementation(kotlin("reflect"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")

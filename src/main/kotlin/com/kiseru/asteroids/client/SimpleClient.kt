@@ -1,13 +1,15 @@
 package com.kiseru.asteroids.client
 
-import kotlinx.coroutines.*
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.kiseru.asteroids.client.dto.Message
+import com.kiseru.asteroids.client.dto.Token
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import org.slf4j.LoggerFactory
-import java.io.BufferedReader
-import java.io.InputStream
-import java.io.InputStreamReader
-import java.io.OutputStream
-import java.io.PrintWriter
+import java.io.*
 import java.net.Socket
 import java.util.*
 
@@ -23,15 +25,16 @@ private val log = LoggerFactory.getLogger("AsteroidsSimpleClient")
 
 suspend fun main(): Unit = coroutineScope {
     val socket = createSocket(HOST, PORT)
+    val inputStream = socket.awaitInputStream()
+    val reader = BufferedReader(InputStreamReader(inputStream))
+    val outputStream = socket.awaitOutputStream()
+    val writer = PrintWriter(outputStream, true)
+    val token = authorize(reader, writer)
     launch {
-        val inputStream = socket.awaitInputStream()
-        val reader = BufferedReader(InputStreamReader(inputStream))
         startReceiver(reader)
     }
     launch {
-        val outputStream = socket.awaitOutputStream()
-        val writer = PrintWriter(outputStream, true)
-        startSender(writer)
+        startSender(writer, token)
     }
 }
 
@@ -48,12 +51,30 @@ suspend fun serverResponses(reader: BufferedReader): Flow<String> = flow {
     }
 }
 
-suspend fun startSender(writer: PrintWriter) = writer.use {
-    userInputFlow()
-        .onStart { log.info("Sender started") }
-        .collect { writer.suspendedPrintln(it) }
+suspend fun authorize(reader: BufferedReader, writer: PrintWriter): String {
+    for (i in 1..2) {
+        val welcomeMessage = reader.awaitReadLine()
+        println(welcomeMessage)
+    }
+    val username = userInputFlow()
+        .take(1)
+        .single()
+    writer.awaitPrintln(username)
+    val response = reader.awaitReadLine()
+    val objectMapper = jacksonObjectMapper()
+    return objectMapper.readValue(response, Token::class.java).token
 }
 
+suspend fun startSender(writer: PrintWriter, token: String) = writer.use {
+    val objectMapper = jacksonObjectMapper()
+    userInputFlow()
+        .onStart { log.info("Sender started") }
+        .collect {
+            val message = Message(token, it)
+            val text = objectMapper.writeValueAsString(message)
+            writer.awaitPrintln(text)
+        }
+}
 
 suspend fun userInputFlow(): Flow<String> = flow {
     val scanner = Scanner(System.`in`)
@@ -71,6 +92,6 @@ suspend fun Socket.awaitOutputStream(): OutputStream = withContext(Dispatchers.I
 
 suspend fun BufferedReader.awaitReadLine(): String = withContext(Dispatchers.IO) { readLine() }
 
-suspend fun PrintWriter.suspendedPrintln(x: String): Unit = withContext(Dispatchers.IO) { println(x) }
+suspend fun PrintWriter.awaitPrintln(x: String): Unit = withContext(Dispatchers.IO) { println(x) }
 
 suspend fun Scanner.awaitNextLine(): String = withContext(Dispatchers.IO) { nextLine() }
