@@ -8,7 +8,7 @@ repositories {
 }
 
 application {
-    mainClass.set("com.kiseru.asteroids.client.SimpleClient")
+    mainClass.set("com.kiseru.asteroids.client.SimpleClientKt")
 }
 
 tasks.named<JavaExec>("run") {
