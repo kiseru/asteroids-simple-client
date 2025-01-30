@@ -1,20 +1,24 @@
 package com.kiseru.asteroids.client
 
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.net.Socket
-import kotlin.concurrent.thread
 
 private const val PORT = 6501
 private const val HOST = "localhost"
 
-fun main() {
-    val socket = Socket(HOST, PORT)
-    thread {
-        val listener = ServerListener(socket.getInputStream(), System.out)
-        listener.listen()
-    }
+suspend fun main(): Unit =
+    coroutineScope {
+        val socket = withContext(Dispatchers.IO) { Socket(HOST, PORT) }
+        launch(Dispatchers.IO) {
+            val listener = ServerListener(socket.getInputStream(), System.out)
+            listener.listen()
+        }
 
-    thread {
-        val client = ServerClient(System.`in`, socket.getOutputStream())
-        client.startClient()
+        launch(Dispatchers.IO) {
+            val client = ServerClient(System.`in`, socket.getOutputStream())
+            client.startClient()
+        }
     }
-}
